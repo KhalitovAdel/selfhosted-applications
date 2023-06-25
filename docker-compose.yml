@@ -1,0 +1,16 @@
+version: '3.9'
+services:
+  squid: 
+    image: robhaswell/squid-authenticated
+    ports:
+      - 22133:3128
+    environment:
+      - SQUID_USERNAME=${SQUID_USERNAME}
+      - SQUID_PASSWORD=${SQUID_PASSWORD}
+  chatgpt-ssr: 
+    image: yidadaa/chatgpt-next-web
+    ports:
+      - 2288:3000
+    environment:
+      - OPENAI_API_KEY=${CHATGPT_KEY}
+      - CODE=${CHATGPT_PASSWORD}
