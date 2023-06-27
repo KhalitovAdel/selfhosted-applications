@@ -3,7 +3,7 @@ name: ReDeploy
 on:
   push:
     branches:
-      - main
+      - master
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -11,9 +11,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Setup SSH
-      uses: webfactory/ssh-agent@v0.5.0
+      uses: webfactory/ssh-agent@v0.7.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
     - name: Deploy code
       run: |
+        ls -al
+        echo "${{ secrets.SSH_USERNAME }}" | base64 > kek
+        cat kek
         ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_SERVER }} "cd selfhosted-applications && git pull && make rebuild"
