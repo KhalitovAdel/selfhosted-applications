@@ -14,3 +14,23 @@ services:
     environment:
       - OPENAI_API_KEY=${CHATGPT_KEY}
       - CODE=${CHATGPT_PASSWORD}
+  vault: 
+    image: hashicorp/vault
+    ports:
+      - 8200:8200
+    volumes:
+      - ${PWD}/vault.hcl:/vault/vault.hcl
+      - vault_backup:/vault/backup
+    entrypoint: vault server -config /vault/vault.hcl
+  node-red:
+    image: nodered/node-red
+    ports:
+      - 1880:1880
+    volumes:
+      - node_red_data:/data
+    environment:
+      - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_PASSWORD}
+  
+volumes:
+  node_red_data:
+  vault_backup:
