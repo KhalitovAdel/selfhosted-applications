@@ -3,4 +3,4 @@ run:
 rebuild:
 	source .env && \
 		docker compose down || echo "application was dows" && \
-		docker compose up -d
+		docker compose up -d 
