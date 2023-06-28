@@ -8,15 +8,16 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Setup SSH
-      uses: webfactory/ssh-agent@v0.7.0
+    - name: Execute SSH commmands on remote server
+      uses: appleboy/ssh-action@master
       with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-    - name: Deploy code
-      run: |
-        ls -al
-        echo "${{ secrets.SSH_USERNAME }}" | base64 > kek
-        cat kek
-        ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_SERVER }} "cd selfhosted-applications && git pull && make rebuild"
+        host: ${{ secrets.SSH_SERVER }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd selfhosted-applications
+          git pull
+          make rebuild
+          source .env && \
+            docker compose down || echo "application was dows" && \
+            docker compose up -d 
