@@ -9,28 +9,51 @@ services:
       - SQUID_PASSWORD=${SQUID_PASSWORD}
   chatgpt-ssr: 
     image: yidadaa/chatgpt-next-web
-    ports:
-      - 2288:3000
+    networks:
+      - workspace
     environment:
       - OPENAI_API_KEY=${CHATGPT_KEY}
       - CODE=${CHATGPT_PASSWORD}
   vault: 
     image: hashicorp/vault
-    ports:
-      - 8200:8200
+    networks:
+      - workspace
     volumes:
       - ${PWD}/vault.hcl:/vault/vault.hcl
       - vault_backup:/vault/backup
     entrypoint: vault server -config /vault/vault.hcl
   node-red:
     image: nodered/node-red
-    ports:
-      - 1880:1880
+    networks:
+      - workspace
     volumes:
       - node_red_data:/data
     environment:
       - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_PASSWORD}
+  nginx-proxy:
+    image: nginx
+    ports:
+      - 8200:8200
+      - 1880:1880
+      - 2288:3000
+      - 443:443
+    networks:
+      - workspace
+    volumes:
+      # - certs:/etc/nginx/certs
+      # - vhost:/etc/nginx/vhost.d
+      # - html:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/templates/workspace.conf.template
+    environment:
+      - DOMAIN=${DOMAIN}
   
 volumes:
   node_red_data:
   vault_backup:
+  certs:
+  vhost:
+  html:
+
+networks:
+  workspace:
+
