@@ -43,6 +43,16 @@ services:
       - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_PASSWORD}
       - VIRTUAL_HOST=node-red.${DOMAIN}
       - LETSENCRYPT_HOST=node-red.${DOMAIN}
+  backup:
+    image: lscr.io/linuxserver/duplicati:latest
+    expose:
+      - 8200
+    volumes:
+      - TZ=Etc/UTC
+      - node_red_data:/applications/node_red:ro
+    environment:
+      - VIRTUAL_HOST=backup.${DOMAIN}
+      - LETSENCRYPT_HOST=backup.${DOMAIN}
   nginx-proxy:
     image: nginxproxy/nginx-proxy
     container_name: nginx-proxy
@@ -56,8 +66,6 @@ services:
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro
-    environment:
-      - DOMAIN=${DOMAIN}
   certification:
     image: nginxproxy/acme-companion
     networks:
