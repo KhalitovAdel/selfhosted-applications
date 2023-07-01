@@ -20,4 +20,4 @@ jobs:
           make rebuild
           source .env && \
             docker compose down || echo "application was dows" && \
-            docker compose up -d 
+            docker compose -f docker-compose.yml -f docker-compose.remote.yml up -d 
