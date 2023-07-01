@@ -9,6 +9,8 @@ services:
       - SQUID_PASSWORD=${SQUID_PASSWORD}
   chatgpt-ssr: 
     image: yidadaa/chatgpt-next-web
+    expose:
+      - 3000
     networks:
       - workspace
     environment:
@@ -18,6 +20,8 @@ services:
       - LETSENCRYPT_HOST=chatgpt.${DOMAIN}
   vault: 
     image: hashicorp/vault
+    expose:
+      - 8200
     networks:
       - workspace
     volumes:
@@ -29,6 +33,8 @@ services:
     entrypoint: vault server -config /vault/vault.hcl
   node-red:
     image: nodered/node-red
+    expose:
+      - 1880
     networks:
       - workspace
     volumes:
