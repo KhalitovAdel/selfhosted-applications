@@ -48,9 +48,9 @@ services:
     expose:
       - 8200
     volumes:
-      - TZ=Etc/UTC
       - node_red_data:/applications/node_red:ro
     environment:
+      - TZ=Etc/UTC
       - VIRTUAL_HOST=backup.${DOMAIN}
       - LETSENCRYPT_HOST=backup.${DOMAIN}
       # TODO: change password
