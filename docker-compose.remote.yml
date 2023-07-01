@@ -1,0 +1,13 @@
+version: '3.9'
+services:
+  certbot:
+    entrypoint: |
+      /bin/sh -c '
+        if [[ -f /etc/letsencrypt/live/${DOMAIN}/privkey.pem ]]; then
+          echo "Сертификаты существуют:"
+        else
+          echo "Сертификаты не существуют, создаем:"
+          certbot certonly --standalone -d ${DOMAIN},www.${DOMAIN} --staple-ocsp -m ${EMAIL} --agree-tos
+        fi;
+        trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;
+      '
