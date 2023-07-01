@@ -16,7 +16,7 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           cd selfhosted-applications
-          git pull
+          git pull --rebase
           make rebuild
           source .env && \
             docker compose down || echo "application was dows" && \
