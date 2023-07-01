@@ -1,0 +1,71 @@
+{
+  "CreatedByVersion": "2.0.7.1",
+  "Schedule": {
+    "ID": 1,
+    "Tags": [
+      "ID=2"
+    ],
+    "Time": "2023-07-02T10:00:00Z",
+    "Repeat": "1D",
+    "LastRun": "0001-01-01T00:00:00Z",
+    "Rule": "AllowedWeekDays=Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday",
+    "AllowedDays": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+    ]
+  },
+  "Backup": {
+    "ID": "2",
+    "Name": "2qq",
+    "Description": "ewfw",
+    "Tags": [],
+    "TargetURL": "file:///backups/",
+    "DBPath": "/config/DUAUTVSNXX.sqlite",
+    "Sources": [
+      "/init"
+    ],
+    "Settings": [
+      {
+        "Filter": "",
+        "Name": "encryption-module",
+        "Value": "",
+        "Argument": null
+      },
+      {
+        "Filter": "",
+        "Name": "compression-module",
+        "Value": "zip",
+        "Argument": null
+      },
+      {
+        "Filter": "",
+        "Name": "dblock-size",
+        "Value": "50MB",
+        "Argument": null
+      },
+      {
+        "Filter": "",
+        "Name": "keep-versions",
+        "Value": "10",
+        "Argument": null
+      },
+      {
+        "Filter": "",
+        "Name": "--no-encryption",
+        "Value": "true",
+        "Argument": null
+      }
+    ],
+    "Filters": [],
+    "Metadata": {},
+    "IsTemporary": false
+  },
+  "DisplayNames": {
+    "/init": "init"
+  }
+}

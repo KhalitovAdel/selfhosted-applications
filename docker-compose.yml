@@ -45,8 +45,6 @@ services:
       - LETSENCRYPT_HOST=node-red.${DOMAIN}
   backup:
     image: lscr.io/linuxserver/duplicati:latest
-    expose:
-      - 8200
     volumes:
       - node_red_data:/applications/node_red:ro
     environment:
@@ -55,6 +53,7 @@ services:
       - PGID=1000
       - CLI_ARGS= `#optional`
       - VIRTUAL_HOST=backup.${DOMAIN}
+      - VIRTUAL_PORT=8200
       - LETSENCRYPT_HOST=backup.${DOMAIN}
       - PASSWORD=${BACKUP_PASSWORD}
   nginx-proxy:
