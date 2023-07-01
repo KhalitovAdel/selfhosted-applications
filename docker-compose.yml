@@ -45,6 +45,8 @@ services:
       - LETSENCRYPT_HOST=node-red.${DOMAIN}
   backup:
     image: lscr.io/linuxserver/duplicati:latest
+    networks:
+      - workspace
     volumes:
       - node_red_data:/applications/node_red:ro
     environment:
