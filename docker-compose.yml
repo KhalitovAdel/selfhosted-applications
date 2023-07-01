@@ -19,15 +19,15 @@ services:
     networks:
       - workspace
     volumes:
-      - ${PWD}/vault.hcl:/vault/vault.hcl
-      - vault_backup:/vault/backup
+      - ${PWD}/vault.hcl:/vault/vault.hcl:ro
+      - vault_backup:/vault/backup:rw
     entrypoint: vault server -config /vault/vault.hcl
   node-red:
     image: nodered/node-red
     networks:
       - workspace
     volumes:
-      - node_red_data:/data
+      - node_red_data:/data:rw
     environment:
       - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_PASSWORD}
   nginx-proxy:
@@ -36,23 +36,47 @@ services:
       - 8200:8200
       - 1880:1880
       - 2288:3000
-      - 443:443
     networks:
       - workspace
     volumes:
-      # - certs:/etc/nginx/certs
-      # - vhost:/etc/nginx/vhost.d
-      # - html:/usr/share/nginx/html
-      - ./nginx.conf:/etc/nginx/templates/workspace.conf.template
+      - configuration:/etc/letsencrypt:ro
+      - www:/var/www/certbot:ro
+      - ./ssl.conf:/etc/nginx/templates/workspace.conf.template:ro
     environment:
       - DOMAIN=${DOMAIN}
+    entrypoint: |
+      /bin/sh -c '
+        envsubst \'"$$"DOMAIN' < /etc/nginx/templates/workspace.conf.template > /etc/nginx/conf.d/workspace.conf
+        echo "waiting ssl certs"
+        sleep 10
+        while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"
+      '
+  certbot:
+    image: certbot/certbot:latest
+    networks:
+      - workspace
+    volumes:
+      - www:/var/www/certbot/:rw
+      - configuration:/etc/letsencrypt:rw
+    entrypoint: |
+      /bin/sh -c '
+        mkdir -p /etc/letsencrypt/live/${DOMAIN}
+        openssl \
+          req \
+          -nodes \
+          -newkey rsa:2048 \
+          -keyout /etc/letsencrypt/live/${DOMAIN}/privkey.pem \
+          -out /etc/letsencrypt/live/${DOMAIN}/csr.pem \
+          -subj "/C=RU/ST=Republic of Tatarstan/L=Kazan/O=ADELKAMADELKA/CN=${DOMAIN}/emailAddress=${EMAIL}"
+        openssl x509 -req -in /etc/letsencrypt/live/${DOMAIN}/csr.pem -signkey /etc/letsencrypt/live/${DOMAIN}/privkey.pem -out /etc/letsencrypt/live/${DOMAIN}/cert.pem
+        trap exit TERM; while :; do echo "mock reeniewe"; sleep 12h & wait $${!}; done;
+      '
   
 volumes:
   node_red_data:
   vault_backup:
-  certs:
-  vhost:
-  html:
+  configuration:
+  www:
 
 networks:
   workspace:
