@@ -51,10 +51,12 @@ services:
       - node_red_data:/applications/node_red:ro
     environment:
       - TZ=Etc/UTC
+      - PUID=1000
+      - PGID=1000
+      - CLI_ARGS= `#optional`
       - VIRTUAL_HOST=backup.${DOMAIN}
       - LETSENCRYPT_HOST=backup.${DOMAIN}
-      # TODO: change password
-      - PASSWORD=${NODE_RED_PASSWORD}
+      - PASSWORD=${BACKUP_PASSWORD}
   nginx-proxy:
     image: nginxproxy/nginx-proxy
     container_name: nginx-proxy
