@@ -15,7 +15,7 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
 
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
+    image: jboss/keycloak
     environment:
       - KEYCLOAK_USER=admin
       - KEYCLOAK_PASSWORD=admin
