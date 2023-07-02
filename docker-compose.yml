@@ -60,7 +60,6 @@ services:
       - VIRTUAL_HOST=backup.${DOMAIN}
       - VIRTUAL_PORT=8200
       - LETSENCRYPT_HOST=backup.${DOMAIN}
-      - PASSWORD=${BACKUP_PASSWORD}
   nginx-proxy:
     image: nginxproxy/nginx-proxy
     container_name: nginx-proxy
