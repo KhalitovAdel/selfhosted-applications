@@ -40,7 +40,7 @@ services:
     volumes:
       - node_red_data:/data:rw
     environment:
-      - ADMIN_AUTH=admin:${NODE_RED_PASSWORD}
+      - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_PASSWORD}
       - VIRTUAL_HOST=node-red.${DOMAIN}
       - LETSENCRYPT_HOST=node-red.${DOMAIN}
   backup:
