@@ -42,7 +42,7 @@ services:
       - "traefik.http.routers.node-red.rule=Host(`node-red.${DOMAIN}`)"
       - "traefik.http.routers.node-red.entrypoints=web"
       - "traefik.http.services.node-red.loadbalancer.server.port=1880"
-      - "traefik.http.middlewares.node-red-auth.forwardauth.address=http://keycloak:8080/auth/realms/master/protocol/openid-connect/auth?client_id=node-red&response_type=code&scope=openid&state=xyz&redirect_uri=http://node-red:1880/auth/callback"
+      - "traefik.http.middlewares.node-red-auth.ForwardAuth.Address=http://keycloak:8080/auth/realms/master/protocol/openid-connect/auth?client_id=node-red&response_type=code&scope=openid&state=xyz&redirect_uri=http://node-red:1880/auth/callback"
       - "traefik.http.middlewares.node-red-auth.forwardauth.trustForwardHeader=true"
       - "traefik.http.middlewares.node-red-auth.forwardauth.authResponseHeaders=X-Auth-Request-User"
       # - "traefik.http.routers.keycloak-ja-${RANDOMTAG}.tls.certresolver=letsencrypt"
