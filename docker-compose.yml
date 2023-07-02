@@ -25,6 +25,8 @@ services:
       - "8081:8080"
     depends_on:
       - traefik
+    volumes:
+      - keycloak_db:/opt/jboss/keycloak/standalone
 
   node-red:
     image: nodered/node-red:latest
@@ -49,3 +51,4 @@ services:
 
 volumes:
   node_red_data:
+  keycloak_db:
