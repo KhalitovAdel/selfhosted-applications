@@ -49,7 +49,23 @@ services:
       - workspace
     volumes:
       - node_red_data:/applications/node_red:ro
+      - vault_backup:/applications/vault:ro
+      - ${BACKUP_VOLUME_PATH}:/backups
     environment:
+      - TZ=Etc/UTC
+      - PUID=1000
+      - PGID=1000
+      - CLI_ARGS= `#optional`
+      - VIRTUAL_HOST=backup.${DOMAIN}
+      - VIRTUAL_PORT=8200
+      - LETSENCRYPT_HOST=backup.${DOMAIN}
+      - PASSWORD=${BACKUP_PASSWORD}
+    entrypoint: |
+      /bin/bash -c '
+        mono /app/duplicati/Duplicati.CommandLine.exe backup file:///backups/ /applications/node_red --backup-name="Node Red backup" --dbpath=/config/node_red.sqlite --encryption-module= --compression-module=zip --dblock-size=50mb --keep-versions=10 --no-encryption=true --disable-module=console-password-input
+        mono /app/duplicati/Duplicati.CommandLine.exe backup file:///backups/ /applications/vault --backup-name="Vault backup" --dbpath=/config/vault.sqlite --encryption-module= --compression-module=zip --dblock-size=50mb --keep-versions=10 --no-encryption=true --disable-module=console-password-input
+        /init
+      '
       - TZ=Etc/UTC
       - PUID=1000
       - PGID=1000
