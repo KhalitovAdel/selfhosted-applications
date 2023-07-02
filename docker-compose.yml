@@ -1,99 +1,46 @@
-version: '3.9'
+version: '3.8'
+
 services:
-  squid: 
-    image: robhaswell/squid-authenticated
+  traefik:
+    image: traefik:v2.5
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
     ports:
-      - 22133:3128
-    environment:
-      - SQUID_USERNAME=${SQUID_USERNAME}
-      - SQUID_PASSWORD=${SQUID_PASSWORD}
-  chatgpt-ssr: 
-    image: yidadaa/chatgpt-next-web
-    expose:
-      - 3000
-    networks:
-      - workspace
-    environment:
-      - OPENAI_API_KEY=${CHATGPT_KEY}
-      - CODE=${CHATGPT_PASSWORD}
-      - VIRTUAL_HOST=chatgpt.${DOMAIN}
-      - LETSENCRYPT_HOST=chatgpt.${DOMAIN}
-  vault: 
-    image: hashicorp/vault
-    expose:
-      - 8200
-    networks:
-      - workspace
+      - "80:80"
+      - "8080:8080"
     volumes:
-      - ${PWD}/vault.hcl:/vault/vault.hcl:ro
-      - vault_backup:/vault/backup:rw
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  keycloak:
+    image: jboss/keycloak:latest
     environment:
-      - VIRTUAL_HOST=vault.${DOMAIN}
-      - LETSENCRYPT_HOST=vault.${DOMAIN}
-    entrypoint: vault server -config /vault/vault.hcl
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=admin
+      - DB_VENDOR=h2
+      - PROXY_ADDRESS_FORWARDING=true
+    ports:
+      - "8081:8080"
+    depends_on:
+      - traefik
+
   node-red:
-    image: nodered/node-red
-    expose:
-      - 1880
-    networks:
-      - workspace
-    volumes:
-      - node_red_data:/data:rw
+    image: nodered/node-red:latest
     environment:
-      - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_PASSWORD}
-      - VIRTUAL_HOST=node-red.${DOMAIN}
-      - LETSENCRYPT_HOST=node-red.${DOMAIN}
-  backup:
-    image: lscr.io/linuxserver/duplicati:latest
-    networks:
-      - workspace
-    volumes:
-      - node_red_data:/applications/node_red:ro
-      - vault_backup:/applications/vault:ro
-      - ${BACKUP_VOLUME_PATH}:/backups
-      - ${BACKUP_DATA_PATH}:/config
-    environment:
-      - TZ=Etc/UTC
-      - PUID=1000
-      - PGID=1000
-      - CLI_ARGS= `#optional`
-      - VIRTUAL_HOST=backup.${DOMAIN}
-      - VIRTUAL_PORT=8200
-      - LETSENCRYPT_HOST=backup.${DOMAIN}
-  nginx-proxy:
-    image: nginxproxy/nginx-proxy
-    container_name: nginx-proxy
+      - KEYCLOAK_AUTH_SERVER_URL=http://keycloak:8080/auth
+      - KEYCLOAK_REALM=master
+      - KEYCLOAK_CLIENT_ID=node-red
+      - KEYCLOAK_CLIENT_SECRET=secret
     ports:
-      - 80:80
-      - 443:443
-    networks:
-      - workspace
-    volumes:
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-  certification:
-    image: nginxproxy/acme-companion
-    networks:
-      - workspace
-    volumes:
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - acme:/etc/acme.sh
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - NGINX_PROXY_CONTAINER=nginx-proxy
-  
-volumes:
-  node_red_data:
-  vault_backup:
-  certs:
-  vhost:
-  html:
-  acme:
-
-networks:
-  workspace:
-
+      - "1880:1880"
+    depends_on:
+      - keycloak
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.node-red.rule=Host(`node-red.${DOMAIN}`)"
+      - "traefik.http.routers.node-red.entrypoints=web"
+      - "traefik.http.middlewares.node-red-auth.forwardauth.address=http://keycloak:8080/auth/realms/master/protocol/openid-connect/auth?client_id=node-red&response_type=code&scope=openid&state=xyz&redirect_uri=http://node-red:1880/auth/callback"
+      - "traefik.http.middlewares.node-red-auth.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.node-red-auth.forwardauth.authResponseHeaders=X-Auth-Request-User"
