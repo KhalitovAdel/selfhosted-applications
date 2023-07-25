@@ -99,8 +99,7 @@ services:
       - node_red_data:/applications/node_red:rw
       - vault_data:/applications/vault:rw
       - postgres_backup:/applications/postgres_backup:rw
-      - ${BACKUP_VOLUME_PATH}:/backups:rw
-      - ${BACKUP_DATA_PATH}:/config:rw
+      - backup_config:/config:rw
     environment:
       - PUID=0
       - PGID=0
@@ -201,6 +200,7 @@ volumes:
   vault_data:
   node_red_data:
   postgres_backup:
+  backup_config:
 
 networks:
   workspace:
