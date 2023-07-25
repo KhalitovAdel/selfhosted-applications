@@ -1,6 +1,8 @@
-run:
-	docker compose rm -v -f && source .env && docker compose up -d
-rebuild:
-	source .env && \
-		docker compose down || echo "application was dows" && \
-		docker compose up -d 
+SHELL := /bin/bash
+.PHONY: deploy-all
+
+deploy-all:
+	source .env && docker compose up -d
+
+deploy-common:
+	source .env && docker compose up -d traefik postgres keycloak

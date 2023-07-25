@@ -17,7 +17,4 @@ jobs:
         script: |
           cd selfhosted-applications
           git pull --rebase
-          make rebuild
-          source .env && \
-            docker compose down || echo "application was dows" && \
-            docker compose up -d 
+          source .env && docker compose up -d 

@@ -1,54 +1,207 @@
 version: '3.8'
 
+x-default: &x-default
+  logging:
+    driver: "json-file"
+    options:
+      max-file: 1
+      max-size: 4m
+  restart: always
+
+
 services:
   traefik:
-    image: traefik:v2.5
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
+    <<: *x-default
+    image: traefik:v3.0
     ports:
-      - "80:80"
-      - "8080:8080"
+    - 80:80
+    - 443:443
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - letsencrypt:/letsencrypt:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - traefik.enable=true
+    networks:
+      - workspace
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --providers.docker
+      - --api.insecure=true
+      - --log.level=DEBUG
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+
+  postgres:
+    <<: *x-default
+    image: postgres:15.3-alpine
+    networks:
+      - workspace
+    volumes:
+      - postgres_data:/var/lib/postgresql/data:rw
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: keycloak
+      POSTGRES_HOST: postgres
+
+  postgres-backup:
+    <<: *x-default
+    image: prodrigestivill/postgres-backup-local:15-alpine-8d72d2d
+    networks:
+      - workspace
+    volumes:
+      - postgres_backup:/backups
+    depends_on:
+      - postgres
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_EXTRA_OPTS=-Z6 --schema=public --blobs
+      - SCHEDULE=@daily
+      - BACKUP_KEEP_DAYS=7
+      - BACKUP_KEEP_WEEKS=4
+      - BACKUP_KEEP_MONTHS=6
 
   keycloak:
-    image: jboss/keycloak
+    <<: *x-default
+    image: quay.io/keycloak/keycloak:21.1
     environment:
-      - KEYCLOAK_USER=admin
-      - KEYCLOAK_PASSWORD=admin
-      - DB_VENDOR=h2
-      - PROXY_ADDRESS_FORWARDING=true
-    ports:
-      - "8081:8080"
-    depends_on:
-      - traefik
+      - KEYCLOAK_ADMIN=${KEYCLOAK_USER}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_PASSWORD}
+      - KC_DB=postgres
+      - KC_DB_URL_HOST=postgres
+      - KC_DB_URL_PORT=5432
+      - KC_DB_URL_DATABASE=keycloak
+      - KC_DB_USERNAME=${POSTGRES_USER}
+      - KC_DB_PASSWORD=${POSTGRES_PASSWORD}
+      - KC_HTTP_ENABLED=true
+      - KC_HOSTNAME_STRICT_HTTPS=false
+    networks:
+      - workspace
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.keycloak.loadbalancer.server.port=8080
+      - traefik.http.routers.keycloak.rule=Host(`auth.${DOMAIN}`)
+      - traefik.http.routers.keycloak.tls=${IS_TLS}
+      - traefik.http.routers.keycloak.tls.certresolver=letsencrypt
+    command: start --hostname=auth.${DOMAIN} --log-level=DEBUG
+  # https://hub.docker.com/r/prodrigestivill/postgres-backup-local
+  backup:
+    <<: *x-default
+    image: linuxserver/duplicati:2.0.7
+    networks:
+      - workspace
     volumes:
-      - keycloak_db:/opt/jboss/keycloak/standalone
+      - node_red_data:/applications/node_red:rw
+      - vault_data:/applications/vault:rw
+      - postgres_data:/applications/postgres:rw
+      - ${BACKUP_VOLUME_PATH}:/backups:rw
+      - ${BACKUP_DATA_PATH}:/config:rw
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Etc/UTC
+      - CLI_ARGS= `#optional`
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.backup.loadbalancer.server.port=8200
+      - traefik.http.routers.backup.rule=Host(`backup.${DOMAIN}`)
+      - traefik.http.routers.backup.tls=${IS_TLS}
+      - traefik.http.routers.backup.tls.certresolver=letsencrypt
+      - traefik.http.routers.backup.middlewares=traefik-forward-auth
+
+  squid:
+    <<: *x-default
+    image: robhaswell/squid-authenticated
+    ports:
+      - 22133:3128
+    environment:
+      - SQUID_USERNAME=${SQUID_USERNAME}
+      - SQUID_PASSWORD=${SQUID_PASSWORD}
+
+  traefik-forward-auth:
+    <<: *x-default
+    image: thomseddon/traefik-forward-auth:2
+    environment:
+      - DEFAULT_PROVIDER=oidc
+      - PROVIDERS_OIDC_ISSUER_URL=http://auth.${DOMAIN}/realms/${DEVELOPMENT_REALM_NAME}
+      - PROVIDERS_OIDC_CLIENT_ID=applications
+      - PROVIDERS_OIDC_CLIENT_SECRET=${DEVELOPMENT_REALM_SECRET}
+      - SECRET=${FORWARD_AUTH_SECRET}
+      - COOKIE_DOMAIN=${DOMAIN}
+      - INSECURE_COOKIE=true
+    networks:
+      - workspace
+    labels:
+      - traefik.enable=true
+      - traefik.http.middlewares.traefik-forward-auth.forwardauth.address=http://traefik-forward-auth:4181
+      - traefik.http.middlewares.traefik-forward-auth.forwardauth.authResponseHeaders=X-Forwarded-User
+      - traefik.http.services.traefik-forward-auth.loadbalancer.server.port=4181
+
+  chatgpt-ssr:
+    <<: *x-default
+    image: yidadaa/chatgpt-next-web:v2.8.6
+    environment:
+      - OPENAI_API_KEY=${CHATGPT_KEY}
+    networks:
+      - workspace
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.chatgpt.loadbalancer.server.port=3000
+      - traefik.http.routers.chatgpt.rule=Host(`question.${DOMAIN}`)
+      - traefik.http.routers.chatgpt.tls=${IS_TLS}
+      - traefik.http.routers.chatgpt.tls.certresolver=letsencrypt
+      - traefik.http.routers.chatgpt.middlewares=traefik-forward-auth
+# 1) Персисит в тч проверить
+# 2) В зависимости от роди ппредоставлять доступ
+  vault:
+    <<: *x-default
+    image: hashicorp/vault:1.14
+    networks:
+      - workspace
+    volumes:
+      - ${PWD}/vault.hcl:/vault/vault.hcl:ro
+      - vault_data:/vault/file:rw
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.vault.loadbalancer.server.port=8200
+      - traefik.http.routers.vault.rule=Host(`vault.${DOMAIN}`)
+      - traefik.http.routers.vault.tls=${IS_TLS}
+      - traefik.http.routers.vault.tls.certresolver=letsencrypt
+    environment:
+      - VAULT_SKIP_VERIFY=TRUE
+      - VAULT_ADDR=http://0.0.0.0:8200
+    entrypoint: |
+      /bin/sh -c "
+        vault server -config /vault/vault.hcl
+      "
 
   node-red:
-    image: nodered/node-red:latest
-    environment:
-      - KEYCLOAK_AUTH_SERVER_URL=http://keycloak:8080/auth
-      - KEYCLOAK_REALM=master
-      - KEYCLOAK_CLIENT_ID=node-red
-      - KEYCLOAK_CLIENT_SECRET=secret
-    depends_on:
-      - keycloak
+    <<: *x-default
+    image: nodered/node-red:3.0.2-minimal
+    networks:
+      - workspace
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.node-red.rule=Host(`node-red.${DOMAIN}`)"
-      - "traefik.http.routers.node-red.entrypoints=web"
-      - "traefik.http.services.node-red.loadbalancer.server.port=1880"
-      - "traefik.http.middlewares.node-red-auth.ForwardAuth.Address=http://keycloak:8080/auth/realms/master/protocol/openid-connect/auth?client_id=node-red&response_type=code&scope=openid&state=xyz&redirect_uri=http://node-red:1880/auth/callback"
-      - "traefik.http.middlewares.node-red-auth.forwardauth.trustForwardHeader=true"
-      - "traefik.http.middlewares.node-red-auth.forwardauth.authResponseHeaders=X-Auth-Request-User"
-      # - "traefik.http.routers.keycloak-ja-${RANDOMTAG}.tls.certresolver=letsencrypt"
+      - traefik.enable=true
+      - traefik.http.routers.node-red.rule=Host(`node-red.${DOMAIN}`)
+      - traefik.http.services.node-red.loadbalancer.server.port=1880
+      - traefik.http.routers.node-red.tls=${IS_TLS}
+      - traefik.http.routers.node-red.tls.certresolver=letsencrypt
+      - traefik.http.routers.node-red.middlewares=traefik-forward-auth
     volumes:
-      - node_red_data:/data
+      - node_red_data:/data:rw
 
 volumes:
+  letsencrypt:
+  postgres_data:
+  vault_data:
   node_red_data:
-  keycloak_db:
+  postgres_backup:
+
+networks:
+  workspace:
+  
