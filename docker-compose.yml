@@ -98,7 +98,7 @@ services:
     volumes:
       - node_red_data:/applications/node_red:rw
       - vault_data:/applications/vault:rw
-      - postgres_data:/applications/postgres:rw
+      - postgres_backup:/applications/postgres_backup:rw
       - ${BACKUP_VOLUME_PATH}:/backups:rw
       - ${BACKUP_DATA_PATH}:/config:rw
     environment:
