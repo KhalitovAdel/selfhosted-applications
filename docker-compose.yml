@@ -127,7 +127,7 @@ services:
     image: thomseddon/traefik-forward-auth:2
     environment:
       - DEFAULT_PROVIDER=oidc
-      - PROVIDERS_OIDC_ISSUER_URL=http://auth.${DOMAIN}/realms/${DEVELOPMENT_REALM_NAME}
+      - PROVIDERS_OIDC_ISSUER_URL=https://auth.${DOMAIN}/realms/${DEVELOPMENT_REALM_NAME}
       - PROVIDERS_OIDC_CLIENT_ID=applications
       - PROVIDERS_OIDC_CLIENT_SECRET=${DEVELOPMENT_REALM_SECRET}
       - SECRET=${FORWARD_AUTH_SECRET}
